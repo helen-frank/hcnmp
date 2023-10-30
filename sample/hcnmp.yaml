@@ -1,0 +1,77 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hcnmp-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: hcnmp
+  namespace: hcnmp-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: hcnmp
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+subjects:
+  - kind: ServiceAccount
+    name: hcnmp
+    namespace: hcnmp-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    run: hcnmp
+  name: hcnmp
+  namespace: hcnmp-system
+spec:
+  selector:
+    matchLabels:
+      run: hcnmp
+  template:
+    metadata:
+      labels:
+        run: hcnmp
+    spec:
+      serviceAccount: hcnmp
+      serviceAccountName: hcnmp
+      containers:
+        - name: hcnmp
+          args:
+            - --debug=false
+            - --port=8080
+            - --namespace=hcnmp-system
+            - --basic-auth-user=admin
+            - --basic-auth-password=admin
+          command:
+            - /opt/app/hcnmp
+          image: helenfrank/hcnmp
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1Gi
+            requests:
+              cpu: "0.1"
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hcnmp
+  namespace: hcnmp-system
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+  selector:
+    run: hcnmp
+  type: NodePort
